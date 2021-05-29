@@ -119,7 +119,7 @@ if __name__ == '__main__':
             # check if task is ended 
             if on_cpu.use(clock_step):
                 tasks_instanses.remove(on_cpu)
-                # html += '<div style="float: left; text-align: center; width: 3px; height: 50px; background-color:' + html_colors['Finish'] + ';"></div>'
+                html += '<div style="float: left; text-align: center; width: 3px; height: 50px; background-color:' + html_colors['Finish'] + ';"></div>'
                 print ("Finish!") ,
         else:
             print ('No task uses the processor. ')
