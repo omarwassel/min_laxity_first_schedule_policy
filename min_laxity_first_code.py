@@ -124,10 +124,11 @@ if __name__ == '__main__':
         else:
             print ('No task uses the processor. ')
             html += '<div style="float: left; text-align: center; width: 50px; height: 50px; background-color:' + html_colors['Empty'] + ';">' + '<br /><p> -------- </p></div>'
+            html += '<div style="float: left; text-align: left; width: 30px; height: 50px; background-color: '+html_colors['Empty']+';">' + '<br /><p>' + str((i+5)/10.0) + '</p></div>'
         print ("\n")
         
     #Html output end
     html += "</body></html>"
-    output = open('output.html', 'w')
+    output = open('schedule_chart.html', 'w')
     output.write(html)
     output.close()
