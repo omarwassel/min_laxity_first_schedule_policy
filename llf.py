@@ -1,23 +1,15 @@
-#Author: Diego PERINI
-#License: Public Domain
-#Least laxity first scheduling implementation
-
-import string
-import random
-from prime import lcm
 from functools import cmp_to_key
 
 #A task instance
 class TaskIns(object):
 
-     #Constructor (should only be invoked with keyword parameters)
-    def __init__(self, start, end, priority, name):
+    def __init__(self, start, end, priority, name ,id):
         self.start    = start
         self.end      = end
         self.usage    = 0
         self.priority = priority
         self.name     = name.replace("\n", "")
-        self.id = int(random.random() * 10000)
+        self.id = id
 
     #Allow an instance to use the cpu (periodic)
     def use(self, usage):
@@ -26,19 +18,15 @@ class TaskIns(object):
             return True
         return False
 
-    #Default representation
     def __repr__(self):
-        return str(self.name) + "#" + str(self.id) + " - start: " + str(self.start) + " priority: " + str(self.priority) 
-        # + budget_text
+        return str(self.name) + "#" + str(self.id) + " - start: " + str(self.start) + " priority: " + str(self.priority)  
 
-    #Get name as Name#id
     def get_unique_name(self):
-        return str(self.name) + "#" + str(self.id)
+        return str(self.name) + "_P" + str(self.id)
 
 #Task types (templates for periodic tasks)
 class TaskType(object):
 
-    #Constructor
     def __init__(self, period, release, execution, deadline, name):
         self.period    = period
         self.release   = release
@@ -54,72 +42,63 @@ def priority_cmp(one, other):
         return 1
     return 0
 
-#Deadline monotonic comparison
-def tasktype_cmp(self, other):
-    if self.deadline < other.deadline:
-        return -1
-    if self.deadline > other.deadline:
-        return 1
-    return 0
-
-if __name__ == '__main__':
-    #Variables
-    html_color = { 'Task1':'red', 'Task2':'blue', 'Task3':'green', 'Task4':'aqua', 'Task5':'coral', 'Empty':'grey', 'Finish':'black'}
-    taskfile = open('tasks.txt')
-    lines = taskfile.readlines()
-    task_types = []
+# read taskes file
+def read_data_from_file(path):
+    file = open(path)
+    lines = file.readlines()
+    
     tasks = []
-    hyperperiod = []
-
-    #Allocate task types
     for line in lines:
         line = line.split(' ')
-        for i in range (0,4):
-            line[i] = int(line[i])
-        if len(line) == 5:
-            name = line[4]
-        elif len(line) == 4:
-            name = 'Task'
+        for i in range (0,2):
+            line[i] = float(line[i])*10
+
+        if len(line) == 3:
+            name = line[2]
+
+        elif len(line) == 2:
+            name = 'T'
         else:
             raise Exception('Invalid tasks.txt file structure')
-        if int(line[0])>0:
-            task_types.append(TaskType(period=line[0], release=line[1], execution=line[2], deadline=line[3], name=name))
+        
+        if int(line[1])>0:
+            tasks.append(TaskType(period=line[1], release=0, execution=line[0], deadline=line[1], name=name))
+    return  tasks 
 
-    #Calculate hyperperiod
-    for task_type in task_types:
-        hyperperiod.append(int(task_type.period))
-    hyperperiod = lcm(hyperperiod)
+if __name__ == '__main__':
+    
+    # time apperes in chart
+    time_to_run = 10*28
+    tasks =read_data_from_file('tasks.txt')
 
-    #Sort types rate monotonic
-    task_types = sorted(task_types, key=cmp_to_key(tasktype_cmp))
-
-
-    #Create task instances
-    for i in range(0, hyperperiod):
-        for task_type in task_types:
-            if  (i - task_type.release) % task_type.period == 0 and i >= task_type.release:
+    tasks_instanses = []
+    for task in tasks:
+        cnt=1
+        for i in range(0, time_to_run , 5):
+            if  (i - task.release) % task.period == 0 and i >= task.release:
                 start = i
-                end = start + task_type.execution
-                priority = start + task_type.deadline - task_type.execution
-                tasks.append(TaskIns(start=start, end=end, priority=priority, name=task_type.name))
+                end = start + task.execution
+                priority = start + task.deadline - task.execution
+                tasks_instanses.append(TaskIns(start=start, end=end, priority=priority, name=task.name,id=cnt))
+                cnt+=1
 
     #Html output start
-    html = "<!DOCTYPE html><html><head><title>LLF Scheduling</title></head><body>"
-
-    # Check utilization
-    # utilization = 0
-    # for task_type in task_types:
-    #     utilization += float(task_type.execution) / float(task_type.period)
-    # if utilization > 1:
-    #     print ('Utilization error!')
-    #     html += '<br /><br />Utilization error!<br /><br />'
+    html_colors = { 'T1':'#FFFACD', 'T2':'#B6D3EF', 'T3':'#999999', 'Empty':'white', 'Finish':'green'}
+    html = '''
+    <!DOCTYPE html>
+    <html>
+        <head>
+            <title>LLF Scheduling</title>
+            <style> p{ background-color :white ;}</style>
+        </head>
+        <body style="display: inline-block;width: 5000px;">'''
 
     #Simulate clock
-    clock_step = 1
-    for i in range(0, hyperperiod, clock_step):
+    clock_step = 5
+    for i in range(0, time_to_run, clock_step):
         #Fetch possible tasks that can use cpu and sort by priority
         possible = []
-        for t in tasks:
+        for t in tasks_instanses:
             if t.start <= i:
                 possible.append(t)
         possible = sorted(possible, key=cmp_to_key(priority_cmp))
@@ -128,23 +107,25 @@ if __name__ == '__main__':
         if len(possible) > 0:
             on_cpu = possible[0]
             print (on_cpu.get_unique_name() , " uses the processor. " ),
-            html += '<div style="float: left; text-align: center; width: 110px; height: 20px; background-color:' + html_color[on_cpu.name] + ';">' + on_cpu.get_unique_name() + '<br />' + str(i) + '-' + str(i+1) + '</div>'
+            
+            if i%10==0:
+                html += '<div style="float: left; text-align: left; width: 1px; height: 50px; background-color: black;">' + '<br /><p></p></div>'
+            
+            html += '<div style="float: left; text-align: center; width: 50px; height: 50px; background-color:' + html_colors[on_cpu.name] + ';"> '+ on_cpu.get_unique_name() +'<br /><p>.........</p></div>'
+            html += '<div style="float: left; text-align: left; width: 30px; height: 50px; background-color: '+html_colors[on_cpu.name]+';">' + '<br /><p>' + str((i+5)/10.0) + '</p></div>'
+             
             on_cpu.priority += 1
+
+            # check if task is ended 
             if on_cpu.use(clock_step):
-                tasks.remove(on_cpu)
-                html += '<div style="float: left; text-align: center; width: 10px; height: 20px; background-color:' + html_color['Finish'] + ';">' + '<br />' + str(i+1) + '</div>'
+                tasks_instanses.remove(on_cpu)
+                # html += '<div style="float: left; text-align: center; width: 3px; height: 50px; background-color:' + html_colors['Finish'] + ';"></div>'
                 print ("Finish!") ,
         else:
             print ('No task uses the processor. ')
-            html += '<div style="float: left; text-align: center; width: 110px; height: 20px; background-color:' + html_color['Empty'] + ';">Empty' + '<br />' + str(i) + '-' + str(i+1) + '</div>'
+            html += '<div style="float: left; text-align: center; width: 50px; height: 50px; background-color:' + html_colors['Empty'] + ';">' + '<br /><p> -------- </p></div>'
         print ("\n")
-
-    #Print remaining periodic tasks
-    html += "<br /><br />"
-    for p in tasks:
-        print (p.get_unique_name() + " is dropped due to overload at time: " + str(i))
-        html += "<p>" + p.get_unique_name() + " is dropped due to overload at time: " + str(i) + "</p>"
-
+        
     #Html output end
     html += "</body></html>"
     output = open('output.html', 'w')
